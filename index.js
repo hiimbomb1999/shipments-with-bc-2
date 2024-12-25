@@ -1,7 +1,8 @@
 const express = require('express');
 const { resolve } = require('path');
 const cors = require('cors'); // Import cors
-
+const axios = require('axios');
+const cheerio = require('cheerio');
 const app = express();
 
 // Sử dụng middleware cors để cho phép tất cả các nguồn (origins) truy cập
@@ -19,25 +20,29 @@ app.get('/proxy', async (req, res) => {
   }
 
   try {
-    const response = await fetch(
-      `https://api.bigcommerce.com/stores/${storeHash}/v2/orders/${orderId}/shipments`,
-      {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-          'X-Auth-Token': token,
-        },
-      }
-    );
+		(async () => {
+			const searchQuery = 'The Midwest Sea Salt Company Google Maps';
+			const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
 
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: `Failed to fetch data from BigCommerce API. Status: ${response.statusText}`,
-      });
-    }
+			try {
+				const { data } = await axios.get(searchUrl, {
+					headers: {
+						'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36',
+					},
+				});
 
-    const data = await response.json();
-    res.json(data);
+				const $ = cheerio.load(data);
+
+				// Tìm kiếm số sao (average rating) và số lượng đánh giá
+				const rating = $('span.BHMmbe').text(); // Rating (e.g., 4.7)
+				const reviewCount = $('span.EymY4b span').last().text(); // Total reviews (e.g., 120 reviews)
+
+				console.log('Average Rating:', rating || 'N/A');
+				console.log('Review Count:', reviewCount || 'N/A');
+			} catch (err) {
+				console.error('Error fetching data:', err.message);
+			}
+		})();
   } catch (error) {
     console.error('Error fetching data:', error);
     res.status(500).json({ error: 'Error fetching data from BigCommerce API' });
